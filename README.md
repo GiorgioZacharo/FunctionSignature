@@ -7,13 +7,13 @@ Loop information, Loads/Store information etc so that they can be used to classi
 
 # Installation
 
-First we need to install all necessary tools. (LLVM8 and FunctionSignature Analysis passes)
+First we need to install all necessary tools. (LLVM-3.8 and FunctionSignature Analysis passes)
 
 
     ./bootsrap_3.8.0
 
 
-The bootstrap.8.0.sh script downloads and builds LLVM8, which is needed to compile and load the FunctionSignature passes. 
+The bootstrap_3.8.0.sh script downloads and builds LLVM-3.8, which is needed to compile and load the FunctionSignature passes. 
 
 If, for any reason, you move/rename LLVM8 source tree, then you have to modify the
 "LLVM_BUILD" Paths in the Makefile and the run_pass.sh script, that invokes the FunctionSignature passes, inside the 
@@ -32,7 +32,7 @@ For testing FunctionSignature, aes is used by Machsuite.
 
 ### 1) Collect dynamic profiling information and generate the annotated  Intermediate Representation (IR) files.
 
-We make sure that the LLVM lines in "Makefile_Profile" point to the path of the LLVM8 build and lib directory:    
+We make sure that the LLVM lines in "Makefile_Profile" point to the path of the LLVM-3.8 build and lib directory:    
 
     BIN_DIR_LLVM=path/to/llvm/build/bin
     LIB_DIR_LLVM=path/to/llvm/build/lib
@@ -44,9 +44,10 @@ the profiling information.
 
 ### 2) Identification of Functions, Analysis and extract their properties.   
 
-We make sure that the LLVM_BUILD line in "run_pass.sh" points to the path of the LLVM8 build directory:
+We make sure that the LLVM paths in "run_pass.sh" point to the path of the LLVM-3.8 build and lib directory:
 
-    LLVM_BUILD=path/to/llvm/build
+    BIN_DIR_LLVM=path/to/llvm/build/bin
+    LIB_DIR_LLVM=path/to/llvm/build/lib
 
 The following script invokes the FunctionSignature Analysis passes and outputs the analysis that includes all the Function properties required.
     
