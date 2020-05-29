@@ -9,9 +9,6 @@ Loop information, Loads/Store information etc so that they can be used to classi
 
 First we need to install all necessary tools. (LLVM8 and FunctionSignature Analysis passes)
 
-If you already have LLVM8 installed you may skip A. and proceed to B. Otherwise please proceed to A. (suggested).
-
-A.
 
     ./bootsrap_3.8.0
 
