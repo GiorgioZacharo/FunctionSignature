@@ -26,7 +26,7 @@ LLVM8 can then be recompiled using make and a new Shared Object (SO) should be c
 
 # Possible errors at compile time
 
-libsanitizer doesn't build against latest glibc anymore, see https://gcc.gnu.org/bugzilla/show\_bug.cgi?id=81066 for details.
+libsanitizer doesn't build against latest glibc anymore, see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81066 for details.
 One of the changes is that stack\_t changed from typedef struct sigaltstack { ... } stack\_t; to typedef struct { ... } stack\_t; for conformance reasons.
 And the other change is that the glibc internal \_\_need\_res\_state macro is now ignored.
 Follow the instructions at https://reviews.llvm.org/D35246 to fix the error. 
