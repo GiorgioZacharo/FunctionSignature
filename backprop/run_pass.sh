@@ -9,8 +9,8 @@
 
 #!/bin/bash
 
-BENCH=aes
-#BENCH=backprop
+#BENCH=aes
+BENCH=backprop
 
 # Paths to LLVM Latest version (3.8) (Edit the Path)
 #BIN_DIR_LLVM=~/llvm3.8/llvm-project-llvmorg-3.8.0/build/bin/
