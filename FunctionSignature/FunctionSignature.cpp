@@ -276,48 +276,60 @@ namespace {
         //   }
         //   NumberOfAllInstructions++;
         // } // End of BB For
-
+        
+        //errs() << "\n\n I am here \n "; 
         // Iterate inside the Loop.
         if (Loop *L = LI.getLoopFor(CurrentBlock)) {
            if (find_loop(Loops_list, L) == -1) { // If Loop not in our list
               Loops_list.push_back(L);
 
+                //errs() << "\n\n I am here 2\n "; 
+
               int LoopCarriedDeps = getLoopCarriedDependencies(CurrentBlock);
+
+              //errs() << "\n\n I am here 3\n "; 
 
               // errs() << "\n\tNum of Back Edges     : " << L->getNumBackEdges() << "\n";
               // errs() << "\tLOOP_D\t : " << L->getLoopDepth() << "\n";
               // errs() << "\tBackedge Taken Count  : " << *SE.getBackedgeTakenCount(L) << '\n';
              // errs() << "\tLOOP_It\t : " << SE.getSmallConstantTripCount(L) << "\n";
 
-            for(BasicBlock::iterator BI = CurrentBlock->begin(), BE = CurrentBlock->end(); BI != BE; ++BI)
-              NumberOfBBInstructions++;
+              for(BasicBlock::iterator BI = CurrentBlock->begin(), BE = CurrentBlock->end(); BI != BE; ++BI)
+                NumberOfBBInstructions++;
 
-            const SCEV *ScEv = SE.getBackedgeTakenCount(L);
-            ConstantRange Range = SE.getSignedRange(ScEv);
-            int stride = 0;
+               //errs() << "\n\n I am here 4\n "; 
 
-             // errs() << "\t test \t : " << Range.getUpper().getLimitedValue() << "\n\n";
+              if (const SCEV *ScEv = SE.getBackedgeTakenCount(L) ) {
 
-            // ConstantInt test = dyn_cast<ConstantInt>Range.getUpper();
-            stride = Range.getUpper().getLimitedValue() / SE.getSmallConstantTripCount(L);
+                //errs() << "\n\n I am here 5\n "; 
+                ConstantRange Range = SE.getSignedRange(ScEv);
+                int stride = 0;
 
-            // errs() << "\tLOOP_St\t : " << stride << "\n\n";
-            errs() << "\tL[name:" << CurrentBlock->getName() << "; depth:" << L->getLoopDepth()
-              << "; iterations:" << SE.getSmallConstantTripCount(L) 
-              << "; stride:" << stride 
-              << "; lcds:" << LoopCarriedDeps               
-              <<"; n_of_instructions:" <<  NumberOfBBInstructions
-              << "] {\n";
+                //errs() << "\n\n I am here 6\n "; 
 
-             getLoadsandStoresOfBB(CurrentBlock);
-             getCallInstrOfBB(CurrentBlock);
 
-            // errs() << "      Signed Range of Backedge Taken Count        : " << SE.getSignedRange(ScEv) << '\n';      
-            // errs() << "      Range of Backedge Taken Count is            : " << Range.getUpper() - Range.getLower() << '\n';
-            // errs() << "      Upper Range of Backedge Taken Count         : " << Range.getUpper()<< '\n';
-            // errs() << "      Loop disposition of Backedge Taken Count is : " << SE.getLoopDisposition(ScEv, L) << "\n\n\n";
-             errs() <<  "}\n";
+                if (SE.getSmallConstantTripCount(L))
+                  stride = Range.getUpper().getLimitedValue() / SE.getSmallConstantTripCount(L);
 
+                 //errs() << "\n\n I am here 7\n "; 
+
+                errs() << "\tL[name:" << CurrentBlock->getName() << "; depth:" << L->getLoopDepth()
+                  << "; iterations:" << SE.getSmallConstantTripCount(L) 
+                  << "; stride:" << stride 
+                  << "; lcds:" << LoopCarriedDeps               
+                  <<"; n_of_instructions:" <<  NumberOfBBInstructions
+                  << "] {\n";
+
+                 getLoadsandStoresOfBB(CurrentBlock);
+                 getCallInstrOfBB(CurrentBlock);
+
+                // errs() << "      Signed Range of Backedge Taken Count        : " << SE.getSignedRange(ScEv) << '\n';      
+                // errs() << "      Range of Backedge Taken Count is            : " << Range.getUpper() - Range.getLower() << '\n';
+                // errs() << "      Upper Range of Backedge Taken Count         : " << Range.getUpper()<< '\n';
+                // errs() << "      Loop disposition of Backedge Taken Count is : " << SE.getLoopDisposition(ScEv, L) << "\n\n\n";
+                errs() <<  "}\n";
+            }
+          
           }
         }
 
