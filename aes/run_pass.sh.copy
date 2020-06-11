@@ -13,12 +13,9 @@ BENCH=aes
 #BENCH=backprop
 
 # Paths to LLVM Latest version (3.8) (Edit the Path)
-#BIN_DIR_LLVM=~/llvm3.8/llvm-project-llvmorg-3.8.0/build/bin/
-#LIB_DIR_LLVM=~/llvm3.8/llvm-project-llvmorg-3.8.0/build/bin/
 BIN_DIR_LLVM=~giorgio/llvm_new/build/bin
 LIB_DIR_LLVM=~giorgio/llvm_new/build/lib
 
-#BIN_DIR_CLANG=~/llvm-project/build/bin/
 #cd src_$BENCH
 
 #echo "--> 1. Create LLVM-IR from C"
@@ -32,5 +29,5 @@ echo "--> 2. Link the LLVM-IR to a single ir file"
 $BIN_DIR_LLVM/llvm-link -S  IR/*.ir -o $BENCH.app.ir
 
 echo "--> 4. Load the FunctionSignature Pass"
-$BIN_DIR_LLVM/opt -load $LIB_DIR_LLVM/FunctionSignature.so -mem2reg  -FunctionSignature -stats    > /dev/null  $BENCH.app.ir
-#$BIN_DIR_LLVM/opt -load $LIB_DIR_LLVM/FunctionSignature.so -FunctionSignature -stats    > /dev/null  $BENCH.ir
+#$BIN_DIR_LLVM/opt -load $LIB_DIR_LLVM/FunctionSignature.so -mem2reg  -FunctionSignature -stats    > /dev/null  $BENCH.app.ir
+$BIN_DIR_LLVM/opt -load $LIB_DIR_LLVM/FunctionDataDependency.so -FunctionDataDependency -stats    > /dev/null  $BENCH.app.ir
