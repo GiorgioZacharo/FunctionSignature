@@ -13,11 +13,11 @@
 # Start editing the Makefile
 
 # Paths to LLVM8 (Edit the Path)
-BIN_DIR_LLVM=~giorgio/llvm_new/build/bin
-LIB_DIR_LLVM=~giorgio/llvm_new/build/lib
+#BIN_DIR_LLVM=~giorgio/llvm_new/build/bin
+#LIB_DIR_LLVM=~giorgio/llvm_new/build/lib
 
-#BIN_DIR_LLVM=~/FunctionSignature/llvm-3.8.0/build/bin
-#LIB_DIR_LLVM=~/FunctionSignature/llvm-3.8.0/build/lib
+BIN_DIR_LLVM=~/FunctionSignature/llvm-3.8.0/build/bin
+LIB_DIR_LLVM=~/FunctionSignature/llvm-3.8.0/build/lib
 # BENCH Name
 BENCH=backprop
 
@@ -51,7 +51,7 @@ profile:  $(BENCH)_instrumented  $(PROF_IR)
 
 %.ir: %.c 
 	$(BIN_DIR_LLVM)/llvm-profdata merge -output=$(BENCH).profdata default.profraw
-	$(BIN_DIR_LLVM)/clang -S -emit-llvm -g -O1   -fprofile-instr-use=$(BENCH).profdata -o $@ $?
+	$(BIN_DIR_LLVM)/clang -S -emit-llvm -g -O0   -fprofile-instr-use=$(BENCH).profdata -o $@ $?
 
 # Generate Instrumented Binary, run it, gather the produced profiling information and generate the BENCH.profdata file.
 $(BENCH)_instrumented: $(REGIONSOURCES) #$(BENCH_OBJECTS) 

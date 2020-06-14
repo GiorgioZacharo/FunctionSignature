@@ -29,7 +29,7 @@ mkdir IR; mv  *.ir IR/.
 
 echo "--> 2. Link the LLVM-IR to a single ir file"
 #$BIN_DIR_LLVM/llvm-link -S  *.ir -o $BENCH.app.ir
-$BIN_DIR_LLVM/llvm-link -S  IR/*.ir -o $BENCH.app.ir
+$BIN_DIR_LLVM/llvm-link -S  IR/backprop.ir -o $BENCH.app.ir
 
 echo "--> 4. Load the FunctionSignature Pass"
 $BIN_DIR_LLVM/opt -load $LIB_DIR_LLVM/FunctionSignature.so -mem2reg  -FunctionSignature -stats    > /dev/null  $BENCH.app.ir
