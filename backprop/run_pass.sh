@@ -13,10 +13,10 @@
 BENCH=backprop
 
 # Paths to LLVM Latest version (3.8) (Edit the Path)
-#BIN_DIR_LLVM=~giorgio/llvm_new/build/bin
-#LIB_DIR_LLVM=~giorgio/llvm_new/build/lib
-BIN_DIR_LLVM=~/FunctionSignature/llvm-3.8.0/build/bin
-LIB_DIR_LLVM=~/FunctionSignature/llvm-3.8.0/build/lib
+BIN_DIR_LLVM=~giorgio/llvm_new/build/bin
+LIB_DIR_LLVM=~giorgio/llvm_new/build/lib
+#BIN_DIR_LLVM=~/FunctionSignature/llvm-3.8.0/build/bin
+#LIB_DIR_LLVM=~/FunctionSignature/llvm-3.8.0/build/lib
 
 #BIN_DIR_CLANG=~/llvm-project/build/bin/
 #cd src_$BENCH

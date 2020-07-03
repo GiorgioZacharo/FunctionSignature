@@ -48,7 +48,6 @@
 
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DebugInfo.h"
-#include "llvm/IR/Metadata.h"
 
 #define DEBUG_TYPE "FunctionSignature"
 
@@ -59,7 +58,6 @@ namespace {
   struct FunctionSignature : public FunctionPass {
     static char ID; // Pass Identification, replacement for typeid
 
-    std::vector<Instruction *> Inst_list;
     std::vector<Loop *> Loops_list; // Global Loop List
     std::vector<Function *> Functions_list; // Global Loop List
     std::vector<unsigned int> Functions_instr_list; // Global Loop List
@@ -80,180 +78,26 @@ namespace {
         Functions_list.push_back(&F);
 
       gatherNumberOfInstructionsOfFunction(&F);
-      
       int FuncFreq = getEntryCount(&F);
+      // errs() << "\n\n\tFunction Name is : " << Function_Name << "\n";
 
-      int *indentLevel;
-      *indentLevel = 0;
-      
-      errs() << "\n\n" << "F["
-	      << "name:" << Function_Name << ";" 
-	      << "call_freq:" << FuncFreq << ";"
-       	      << "n_of_instructions:" <<  Functions_instr_list[ find_function(Functions_list, &F)] << ";" 
-	      << "]{\n";
-      (*indentLevel)++;
-      
-      getFunctionParameters(&F, indentLevel);
-      
-      for(Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB) {
-          BasicBlock *CurrentBlock = &*BB;
-      	  analyseBasicBlock(CurrentBlock, LI, SE, indentLevel);
-      }
-      errs() << "}" << '\n';
-      (*indentLevel)--;
+      errs() << "\n\n" <<"F[name:" <<Function_Name << "; call_freq:" << FuncFreq <<
+       "; n_of_instructions:" <<  
+        Functions_instr_list[ find_function(Functions_list, &F)] << "] {\n";
+      // errs() << "   **********************************************" << '\n';
+
+      getInputFunction(&F);
+        //getFunctionSignature(&F);
+        //gatherLoadsandStores(&F);
+      getLoadsStoresLoopsOfFunction(&F, LI, SE);
+        //getCallInstrOfFunction(&F);
+      errs() << " }" << '\n';
+
+
       return false;
     }
 
-   int find_inst(std::vector<Instruction *> list, Instruction *inst) {
-       for (unsigned i = 0; i < list.size(); i++)
-	       if (list[i] == inst)
-		       return i;
-       return -1;
-   }
 
-   void analyseBasicBlock(BasicBlock *CurrentBlock, LoopInfo &LI, ScalarEvolution &SE, int * indentLevel){
-	//int NumberOfBBInstructions = 0;
-	if (Loop *L = LI.getLoopFor(CurrentBlock)) {
-	   if (find_loop(Loops_list, L) == -1) { // If Loop not in our list
-    		   Loops_list.push_back(L);	
-  		   
-		   int LoopCarriedDeps = getLoopCarriedDependencies(CurrentBlock);
-		   int stride = 0;
-		   if (const SCEV *ScEv = SE.getBackedgeTakenCount(L) ) {
-		       ConstantRange Range = SE.getSignedRange(ScEv);
-		       if (SE.getSmallConstantTripCount(L)){
-		           stride = Range.getUpper().getLimitedValue() / SE.getSmallConstantTripCount(L);
-		       }
-		   }
-
-		   //for(BasicBlock::iterator BI = CurrentBlock->begin(), BE = CurrentBlock->end(); BI != BE; ++BI){
-    		   //   NumberOfBBInstructions++;
-	   	   //}
-		   errs() << printIndentation(indentLevel)
-			  << "L["
-			  << "name:" << CurrentBlock->getName() << ";"
-			  << "depth:" << L->getLoopDepth() << ";"
-           		  << "iterations:" << SE.getSmallConstantTripCount(L) << ";"
-           		  << "stride:" << stride << ";"
-			  << "lcds:" << LoopCarriedDeps << ";"
-			  << "]{\n";
-
-		   (*indentLevel)++;
-
-                   for(BasicBlock *BB : L->getBlocks()){
-	 		   analyseBasicBlock(BB, LI, SE, indentLevel);	
-		   }
-		   (*indentLevel)--;
-                   errs() << printIndentation(indentLevel) << "}" << '\n';
-	   }	
-       }
-       visitBasicBlock(CurrentBlock, indentLevel);
-    }
-
-    void visitBasicBlock(BasicBlock *BB, int *indentLevel){
-        for(BasicBlock::iterator BI = BB->begin(), BE = BB->end(); BI != BE; ++BI){
-            Instruction *CurrentInstruction = &*BI;
-	    if (find_inst(Inst_list, CurrentInstruction) == -1) { // If instruction not in our list
-		Inst_list.push_back(CurrentInstruction);
-
-                if(isa<CallInst>(CurrentInstruction)){
-		    analyseCallInstruction(CurrentInstruction, indentLevel);
-	        }
-	        if (isa<LoadInst>(CurrentInstruction)){
-		    analyseReadInstruction(CurrentInstruction, indentLevel);
-                }
-                if (isa<StoreInst>(CurrentInstruction)){
-		    analyseWriteInstruction(CurrentInstruction, indentLevel);
-                }
-	        if (isa<AllocaInst>(CurrentInstruction)){
-		    analyseAllocationInstruction(CurrentInstruction, indentLevel);
-                }
-	    }
-	}
-    }
-
-    std::string printIndentation(int *indentationLevel){
-	std::string tabs = "";
-	for(int i=0; i<*indentationLevel; i++){
-            tabs += "\t";
-	}
-	return tabs;
-    }
-
-    void analyseAllocationInstruction(Instruction *CurrentInstruction, int *indentLevel){
-        AllocaInst *allocInst = cast<AllocaInst>(CurrentInstruction);
-        if(allocInst->isArrayAllocation()){
-            //errs() << "A\n";
-	    Type* t = allocInst->getType();
-	    allocArrayData(allocInst, t, indentLevel);
-        }
-        if(allocInst->isStaticAlloca()){
-            Type* t = allocInst->getType();
-	    allocArrayData(allocInst, t, indentLevel);
-            //if(t->isPointerTy()){
-            //    Type *pT = t->getPointerElementType();
-            //    bool isArray = false;
-            //    if(pT->isArrayTy()){ //Change it in a while to explore all the dimension of the array
-            //        isArray = true;
-            //    }
-            //    if (isArray==true){
-            //        errs() << "A\n";
-        	//}
-	    //}
-	}
-    }
-
-    void analyseWriteInstruction(Instruction *CurrentInstruction, int *indentLevel){
-	StoreInst *s = cast<StoreInst>(CurrentInstruction);
-        Value* v = s->getPointerOperand();
-        if(isa<GEPOperator>(v)){
-          errs() << printIndentation(indentLevel)
-		 << "W["
-                 << "addr:" << s << ";"
-                 << "name:" << s->getOperand(1)->getName() << ";"
-                 << "offset:" << "NA;"
-                 << "]" << "\n";   
-	} 
-    }
-
-    void analyseReadInstruction(Instruction *CurrentInstruction, int *indentLevel){
-        LoadInst *l = cast<LoadInst>(CurrentInstruction);
-        Value* v = l->getPointerOperand();
-        if(isa<GEPOperator>(v)){
-          errs() << printIndentation(indentLevel)
-		 << "R[" 
-		 << "addr:" << l << ";" 
-		 << "name:" << l->getOperand(0)->getName() << ";" 
-		 << "offset:" << "NA;"
-		 << "]" << "\n";
-        }
-    }
-
-    void analyseCallInstruction(Instruction *CurrentInstruction, int *indentLevel){
-        StringRef CallName = cast<CallInst>(CurrentInstruction)->getCalledFunction()->getName();
-	if (!(CallName == "llvm.dbg.value" || CallName == "llvm.lifetime.start" || CallName == "llvm.lifetime.start" || CallName == "llvm.lifetime.end" 
-				|| CallName == "llvm.dbg.declare")){
-	    if (CallName.find("llvm.memset") != std::string::npos){
-		//StoreInst *s = cast<StoreInst>(CurrentInstruction);
-		//Value *value = CurrentInstruction->getValueID();
-		//errs() << "Store\n";
-		    errs() << printIndentation(indentLevel)
-                       << "W["
-                       << "addr:" << ";"
-                       << "name:" << ";"
-                       << "offset:" << "NA;"
-                       << "]" << "\n";
-		      
-	    }else{
-          
-                errs() << printIndentation(indentLevel)
-                    << "C[" 
-	            << "name:" << CallName << ";"
-                    << "n_of_instructions:" <<  Functions_instr_list[ find_function(Functions_list, cast<CallInst>(CurrentInstruction)->getCalledFunction())] << ";"
-                    << "]\n";
-	   }
-	}
-    }    
 
     void gatherNumberOfInstructionsOfFunction(Function *F) {
 
@@ -267,41 +111,275 @@ namespace {
       Functions_instr_list.push_back(NumberOfLLVMInstructions);   
     }
 
-//    void gatherNumberOfInstructionsOfLoop(Loop *L) {
-//
-//      unsigned int NumberOfLLVMInstructions=0;
-//
-//            for(Function::iterator BB = F->begin(), E = F->end(); BB != E; ++BB){
-//		    // Iterate inside the basic block.
-//	    	for(BasicBlock::iterator BI = BB->begin(), BE = BB->end(); BI != BE; ++BI){
-//	                NumberOfLLVMInstructions++;
-//	    	}
-//		Functions_instr_list.push_back(NumberOfLLVMInstructions);
-//	    }
-//    }
+    // //
+    // //
+    // void getCallInstrOfFunction (Function *F) {
 
-  //void getFunctionSignature(Function *F) {
-  std::string getFunctionSignatureMetadata(Function *F) {
-	  std::string metadata = "";
-	  if (F->hasMetadata()) {
+    //   // unsigned int NumberOfInstructions = 0, NumberOfAllInstructions = 0;
 
-      		MDNode *node = F->getMetadata("dbg");
+    //   for(Function::iterator BB = F->begin(), E = F->end(); BB != E; ++BB) {
 
-      		llvm::DISubprogram *SP = F->getSubprogram();
-      		unsigned scopeline = SP->getScopeLine();
-      		unsigned line = SP->getLine();
-      		llvm::DIScope *Scope = dyn_cast<DIScope>(SP->getScope());
+    //     BasicBlock *CurrentBlock = &*BB;
 
-      		metadata += "metadata[file:";
-	       	metadata += Scope->getDirectory();
-             	metadata += "/";
-	        metadata += Scope->getFilename();
-	        metadata += ";";
-	        metadata += "line_number:";
-	        metadata += std::to_string(line);
-		metadata += ";]";
-    	}
-	return metadata;
+    //     // Iterate inside the basic block.
+    //     for(BasicBlock::iterator BI = CurrentBlock->begin(), BE = CurrentBlock->end(); BI != BE; ++BI) {
+
+    //            // Load Info
+    //       if(CallInst *CI = dyn_cast<CallInst>(&*BI)) {
+
+    //         StringRef CallName = CI->getCalledFunction()->getName();
+            
+    //         if (CallName == "llvm.dbg.value" || CallName == "llvm.lifetime.start" || CallName == "llvm.lifetime.start" ||
+    //             CallName == "llvm.lifetime.end")
+    //           continue;
+
+    //         errs() 
+    //         // <<  *CI  <<"\n"
+    //         // << "OP1: " << *CI->getOperand(0) <<"\n"
+    //         // << "OP2 " << *CI->getOperand(1) <<"\n"
+    //         << "C[name: " << CI->getCalledFunction()->getName() 
+    //         <<"; n_of_instructions:" <<  Functions_instr_list[ find_function(Functions_list, CI->getCalledFunction())] 
+    //         << "]\n";
+    //       }
+    //     }
+    //   }
+    // }
+
+    //
+    void getCallInstrOfBB (BasicBlock *BB) {
+
+      // Iterate inside the basic block.
+      for(BasicBlock::iterator BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
+
+             // Load Info
+        if(CallInst *CI = dyn_cast<CallInst>(&*BI)) {
+
+          StringRef CallName = CI->getCalledFunction()->getName();
+          
+          if (CallName == "llvm.dbg.value" || CallName == "llvm.lifetime.start" || CallName == "llvm.lifetime.start" ||
+              CallName == "llvm.lifetime.end")
+            continue;
+
+          errs() 
+          // <<  *CI  <<"\n"
+          // << "OP1: " << *CI->getOperand(0) <<"\n"
+          // << "OP2 " << *CI->getOperand(1) <<"\n"
+          << "\t\tC[name: " << CI->getCalledFunction()->getName() 
+          <<"; n_of_instructions:" <<  Functions_instr_list[ find_function(Functions_list, CI->getCalledFunction())] 
+          << "]\n";
+        }
+      }
+    }
+
+    // Get Loads and Stores of a BB 
+    //
+    //
+    void getLoadsandStoresOfBB (BasicBlock *BB) {
+
+
+      // Iterate inside the basic block.
+      for(BasicBlock::iterator BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
+
+        // Load Info
+        if(LoadInst *Load = dyn_cast<LoadInst>(&*BI)) {
+          llvm::Type *LoadType = Load->getType();
+          errs() << "\t\tR[addr:" << Load <<"; name:" << Load->getOperand(0)->getName() << "; offset:" << "NA;]" << "\n";
+        }
+
+        // Store Info
+        if(StoreInst *Store = dyn_cast<StoreInst>(&*BI)) {
+
+          llvm::Type *StoreOperandZeroType = Store->getOperand(0)->getType();
+          llvm::Type *StoreOperandOneType = Store->getOperand(1)->getType();
+
+          // if (StoreOperandZeroType->isIntegerTy())
+          if (AllocaInst *alloca = dyn_cast<AllocaInst>(Store->getOperand(1))) 
+            continue;
+          
+          else 
+            errs() << "\t\tW[addr:" << Store <<"; name:" << Store->getOperand(1)->getName() << "; offset:" << "NA;]"  <<"\n";
+        }
+      } // End of BB For  
+
+
+    }
+    
+
+    // Loops Identifier of a given function. (if any loops)
+    //
+    void getLoadsStoresLoopsOfFunction (Function *F, LoopInfo &LI, ScalarEvolution &SE ) {
+
+      unsigned int NumberOfBBInstructions = 0 ; // NumberOfInstructions = 0,
+
+      for(Function::iterator BB = F->begin(), E = F->end(); BB != E; ++BB) {
+
+        BasicBlock *CurrentBlock = &*BB;
+        unsigned int NumberOfBBInstructions = 0 ; // NumberOfInstructions = 0,
+
+        for(BasicBlock::iterator BI = CurrentBlock->begin(), BE = CurrentBlock->end(); BI != BE; ++BI)
+              NumberOfBBInstructions++;
+          
+          errs() << "\n\tBB[name:" << CurrentBlock->getName() 
+            <<"; n_of_instructions:" <<  NumberOfBBInstructions << "]\n";
+
+        
+        // If-Else Analsyis (Branch Instructions Analysis)
+        //           
+        for(BasicBlock::iterator BI = CurrentBlock->begin(), BE = CurrentBlock->end(); BI != BE; ++BI)    
+          if (BranchInst *BRI = dyn_cast<BranchInst>(&*BI)){
+        
+
+            if (BRI->isConditional()) { 
+              unsigned int NumOfSuccessors = BRI->getNumSuccessors();
+
+              for (unsigned int i=0; i< NumOfSuccessors; i++)
+                errs() << "\n\t  BranchInst (IF=0,ELSE=1): " << i << "\tSuccessor BB: " << BRI->getSuccessor(i)->getName();
+            }
+
+          }
+
+        
+        //errs() << "\n\n I am here \n "; 
+        // Iterate inside the Loop.
+        if (Loop *L = LI.getLoopFor(CurrentBlock)) {
+           if (find_loop(Loops_list, L) == -1) { // If Loop not in our list
+              Loops_list.push_back(L);
+
+                //errs() << "\n\n I am here 2\n "; 
+
+              int LoopCarriedDeps = getLoopCarriedDependencies(CurrentBlock);
+
+              //errs() << "\n\n I am here 3\n "; 
+
+              // errs() << "\n\tNum of Back Edges     : " << L->getNumBackEdges() << "\n";
+              // errs() << "\tLOOP_D\t : " << L->getLoopDepth() << "\n";
+              // errs() << "\tBackedge Taken Count  : " << *SE.getBackedgeTakenCount(L) << '\n';
+             // errs() << "\tLOOP_It\t : " << SE.getSmallConstantTripCount(L) << "\n";
+
+              // for(BasicBlock::iterator BI = CurrentBlock->begin(), BE = CurrentBlock->end(); BI != BE; ++BI)
+              //   NumberOfBBInstructions++;
+
+               //errs() << "\n\n I am here 4\n "; 
+
+              if (const SCEV *ScEv = SE.getBackedgeTakenCount(L) ) {
+
+                //errs() << "\n\n I am here 5\n "; 
+                ConstantRange Range = SE.getSignedRange(ScEv);
+                int stride = 0;
+
+                //errs() << "\n\n I am here 6\n "; 
+
+
+                if (SE.getSmallConstantTripCount(L))
+                  stride = Range.getUpper().getLimitedValue() / SE.getSmallConstantTripCount(L);
+
+                 //errs() << "\n\n I am here 7\n "; 
+
+                errs() << "\n\t  L[name:" << CurrentBlock->getName() << "; depth:" << L->getLoopDepth()
+                  << "; iterations:" << SE.getSmallConstantTripCount(L) 
+                  << "; stride:" << stride 
+                  << "; lcds:" << LoopCarriedDeps               
+                  <<"; n_of_instructions:" <<  NumberOfBBInstructions
+                  << "] {\n";
+
+                 getLoadsandStoresOfBB(CurrentBlock);
+                 getCallInstrOfBB(CurrentBlock);
+
+                // errs() << "      Signed Range of Backedge Taken Count        : " << SE.getSignedRange(ScEv) << '\n';      
+                // errs() << "      Range of Backedge Taken Count is            : " << Range.getUpper() - Range.getLower() << '\n';
+                // errs() << "      Upper Range of Backedge Taken Count         : " << Range.getUpper()<< '\n';
+                // errs() << "      Loop disposition of Backedge Taken Count is : " << SE.getLoopDisposition(ScEv, L) << "\n\n\n";
+                errs() <<  "\t  }\n";
+            }
+          
+          }
+        }
+
+        else { // No loops
+          // for(BasicBlock::iterator BI = CurrentBlock->begin(), BE = CurrentBlock->end(); BI != BE; ++BI)
+          //   NumberOfInstructions++;
+
+           getLoadsandStoresOfBB(CurrentBlock);
+            getCallInstrOfBB(CurrentBlock);
+        }
+      } // End of for
+      // errs() << "   ----------------------------------------------" << '\n';
+      // errs() << " Number of Instructions                  : " << NumberOfAllInstructions << "\n";
+      // errs() << " Number of Instructions (Loops Excluded) : " << NumberOfInstructions << "\n";
+      // errs() << "   ----------------------------------------------" << '\n';
+    }
+
+
+
+    // Metadata Information
+
+  void getFunctionSignature(Function *F) {
+
+
+
+    if (F->hasMetadata()) {
+
+      // errs() << " Metadata Found! " << "\n";
+
+      MDNode *node = F->getMetadata("dbg");
+
+      // errs() << node->getMetadataID() << "\n";
+      llvm::DISubprogram *SP = F->getSubprogram();
+      unsigned scopeline = SP->getScopeLine();
+      unsigned line = SP->getLine();
+      // errs() << " line : " << line << "\n";
+      //  errs() << " scope line : " << scopeline << "\n";
+
+      // errs() << "\t SLN : " << scopeline << "\n";
+      // llvm::DISubprogram *subProgram = node->getDISubprogram();
+
+      // errs() << " line : " << subProgram->getFlagString() << "\n";
+      // auto *subProgram =  dyn_cast<DISubprogram>(node);
+       // llvm::DILocation *Loc = F->getDebugLoc();
+
+      // errs() << node->getContext()->getMDKindID() << "\n";
+
+      // llvm::DILocation *Loc = dyn_cast<DILocation>(node);
+       llvm::DIScope *Scope = dyn_cast<DIScope>(SP->getScope());
+
+      // errs() << " File Name : " << Scope->getFilename() << "\n";
+      // errs() << " File Directory : " << Scope->getDirectory() << "\n";
+
+
+      errs() << "file: " << Scope->getDirectory()  // << "\n";
+             << "/" << Scope->getFilename() << ";";
+
+      errs() << " line_number: " << line << ";]";
+
+ // errs() << " Type: " << SP->getType()->getRawFile() ;
+ //  errs() << " Type: " << SP->getType()->getScope() ;
+
+// Woeking on this!
+// llvm::DITypeRefArray RefArray = SP->getType()->getTypeArray();
+// llvm::DIDerivedType DIType = dyn_cast<DIDerivedType>(&*RefArray->op_begin());
+    // errs() << " Type: " << Scope-getFile() ;
+
+      // if (llvm::DILocation *Loc = dyn_cast<DILocation>(node))
+      //   errs() << *Loc << "\n";
+       // errs() << " line : " << Loc->getLine() << "\n";
+
+
+
+         // errs() << " Node " << *node <<  " \n Operands: " << node->getNumOperands() <<"\n";
+         // errs() << "OP 0 : " << *node->getOperand(0) <<  "\n OP 1 " << *node->getOperand(1) << "\n OP 2 : \t" << *node->getOperand(2) << "\n"; 
+         // errs() << "\n OP 3 : " << *node->getOperand(3) 
+         // << "\n OP 5 :\t" << *node->getOperand(5) 
+         // << "\n"; 
+
+      // if (MDString::classof(node->getOperand(1))) {
+      //   auto mds = cast<MDString>(node->getOperand(1));
+      //   std::string metadata_str = mds->getString();
+
+      //   errs() << " Metadata String : " << metadata_str << "\n";
+
+      // }
+    }
+
   }
 
 
@@ -319,26 +397,6 @@ namespace {
 
     return 1;
   }
-
-
-    void allocArrayData(AllocaInst *alloc, Type *t, int * indentLevel) {
-
-        long int array_data=0;
-	int TotalNumberOfArrayElements = 1;
-	if(t->isPointerTy()){
-	    Type *pT = t->getPointerElementType();
-	    bool isArray = false;
-	    if(pT->isArrayTy()){ //Change it in a while to explore all the dimension of the array
-       		    llvm::Type *array_type    = t->getArrayElementType();
-		    errs() << printIndentation(indentLevel) 
-		       << "A[name:" << alloc->getName() << ";"
-		       << "type:" << *(alloc->getAllocatedType()) << ";"
-		       << "n_bit:" << array_type->getPrimitiveSizeInBits() << ";"
-		       //<< "]\n";
-		       << "size:" << pT->getArrayNumElements() << ";];\n";
-	    }
-	}
-    }
 
   // Gather the data of the Array type.
   //
@@ -359,9 +417,9 @@ namespace {
         // << *array_type
          // << array_type
          //     << &type
-        << "NA" 
-        <<";type:" << *array_type 
-        << ";n_bit:" << SizeOfElement << ";size:"  << NumberOfArrayElements << ";];" ;
+        << " NA" 
+        <<"; type:" << *array_type 
+        << "; n_bit:" << SizeOfElement << "; size:"  << NumberOfArrayElements << ";];" ;
 
       TotalNumberOfArrayElements *= NumberOfArrayElements;
 
@@ -379,9 +437,10 @@ namespace {
 
     long int arg_data =0;
 
-    // Pointer case
     if ( type->isPointerTy()){
+      // errs() << "\n\t Pointer Type!  " << " \n --------\n";
        errs() << "*";
+
 
       llvm::Type *Pointer_Type = type->getPointerElementType();
       arg_data+=getTypeData(Pointer_Type);
@@ -393,32 +452,54 @@ namespace {
       long int struct_data=0;
       unsigned int NumberOfElements = type->getStructNumElements();
 
-      errs() << "S[name:" << type->getStructName() << ";";
+      errs() << " S["  << type->getStructName() << ";";
+
+      // for (int i=0; i<NumberOfElements; i++){
+
+      //   llvm::Type *element_type = type->getStructElementType(i);
+      //   // errs() << "\n\t Struct -- Arg: " << i << " " << *element_type << " "
+
+      //   if (structNameIsValid(type))
+      //     struct_data +=  getTypeData(element_type);
+  
+      // }
 
       StructType *struct_type = dyn_cast<StructType>(&*type);
       int i=0;
 
       for  (llvm::StructType::element_iterator  EI= struct_type->element_begin(), EE = struct_type->element_end(); EI != EE; ++EI, i++){
+
   
         llvm::Type *element_type = type->getStructElementType(i);
+
+        // llvm::Type* const* type = &*EI;
+        // errs() << " Element of Struct " << EI << "   " 
+        // << *&EI << "   "  
+        // << &*EI << "   " 
+        // << **EI << "   " 
+        // << "\n";
 
         errs() << "\n\t\taddr:" << EI << ";"; 
 
         if (structNameIsValid(type))
           struct_data +=  getTypeData(element_type);
 
+
+
       }
+
 
       errs() << "];";
   
       arg_data = struct_data;
+      //return arg_data;    
     }
 
     // Scalar Case
     else if ( type->getPrimitiveSizeInBits()) {
       //errs() << "\n\t Primitive Size  " <<  type->getPrimitiveSizeInBits()  << " \n ";
       arg_data = type->getPrimitiveSizeInBits();
-      errs() << arg_data;
+      errs() << "i" << arg_data;
       //return arg_data;
 
     }
@@ -442,7 +523,13 @@ namespace {
   }
 
     // Input from parameter List.
-    void getFunctionParameters(Function *F, int * indentLevel){
+    //
+    //
+    long int getInputFunction(Function *F) {
+      long  int InputData = 0; // Bits
+      long int InputDataBytes = 0; // Bytes
+
+      int arg_index=0;
 
       Function::ArgumentListType & Arg_List = F->getArgumentList();
 
@@ -451,20 +538,114 @@ namespace {
         llvm::Argument *Arg = &*AB;
         llvm::Type *Arg_Type = Arg->getType();
 
-         errs() << printIndentation(indentLevel)
-		<<  "P[" 
-		<< "addr:" << Arg << ";"
-          	<< "name:" << AB->getName() << ";"
-	        << "type:";
+        // if (Instruction *Arg_Inst = dyn_cast<Instruction>(Arg)) {
+
+        // if (Arg_Inst->hasMetadata())
+        //   errs()  << " Metadata \n";
+        // }
+        
+
+
+        // errs() << "\n\n Argument : " << arg_index << "  --->  " << *AB << " -- " << *Arg_Type  << " --  \n ";
+         errs() << "\t P[addr:" << Arg
+          <<"; name:" 
+         // << arg_index << "\t" 
+         << AB->getName() << "; type:";
+         // << *AB 
+         // << " , " << *Arg_Type  << "\n ";
 
         long int InputDataOfArg = getTypeData(Arg_Type);
-        errs() << "n_bit:" << InputDataOfArg << ";" 
-		<< "size:" << getFunctionSignatureMetadata(F) << ";"
-        	<< "]\n";
+        errs() << " n_bit:" << InputDataOfArg << "; size:";
+        //<< "NA"
+        getFunctionSignature(F);
+        errs() << "]\n";
+        // errs() << "\n\n Argument : " << arg_index << "  -- Input Data --  " << InputDataOfArg<< " \n "; 
+
+        InputData += InputDataOfArg;
+        arg_index++;
 
        }
 
+       // errs() << "\n\n Total Input Data Bits :  " << InputData << " \n ";
+       InputDataBytes = InputData/8; 
+       // errs() << "\n\n Total Input Data Bytes :  " << InputDataBytes << " \n ";
+
+      return InputDataBytes;
     }
+
+    // Gather Stores and Loads from Functions
+    //
+    //
+    void gatherLoadsandStores(Function *F) {
+      long unsigned int NumberOfInstructions = 0;
+
+      // BlockFrequencyInfo *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>().getBFI(); 
+
+
+      for(Function::iterator BB = F->begin(), E = F->end(); BB != E; ++BB) {
+        BasicBlock *CurrentBlock = &*BB;
+
+        // float BBFreqFloat = static_cast<float>(static_cast<float>(BFI->getBlockFreq(CurrentBlock).getFrequency()) / static_cast<float>(BFI->getEntryFreq()));
+        // int EntryFuncFreq = getEntryCount(F);
+        // float BBFreq = BBFreqFloat * static_cast<float>(EntryFuncFreq);
+
+        errs() << "BB " << CurrentBlock->getName() << "\n";
+        // errs() << " Entry Freq :  " << EntryFuncFreq << " \n ";
+        // errs() << " BB Freq :  " << BBFreqFloat << " \n ";
+        // errs() << " BB Total Freq :  " << BBFreq << " \n ";
+
+        // Iterate inside the basic block.
+        for(BasicBlock::iterator BI = CurrentBlock->begin(), BE = CurrentBlock->end(); BI != BE; ++BI) {
+
+          // Load Info
+          if(LoadInst *Load = dyn_cast<LoadInst>(&*BI)) {
+
+            llvm::Type *LoadType = Load->getType();
+            // llvm::Type *Ptr_LoadType = NULL;
+
+            if ( LoadType->isPointerTy()) {
+              llvm::Type *Ptr_LoadType = LoadType->getPointerElementType();
+
+               if (Ptr_LoadType->isStructTy() || Ptr_LoadType->isArrayTy() || Ptr_LoadType->isVectorTy()) {
+                  errs() << "\tLD\t" << *Load << "\t"  << *Load->getType() << "\t\t" << "\n";
+                  getTypeData(LoadType);
+                }
+            }
+          }
+
+          // Store Info
+          if(StoreInst *Store = dyn_cast<StoreInst>(&*BI)) {
+
+            // errs() << "Store\n"; 
+            errs() << "\tST\t" << *Store << "\t"  << *Store->getType() << "\t\t" << "\n";
+
+            llvm::Type *StoreType = Store->getType();
+            // llvm::Type *Ptr_StoreType = NULL;
+
+            if ( StoreType->isPointerTy()) {
+              llvm::Type *Ptr_StoreType = StoreType->getPointerElementType();
+
+               if (Ptr_StoreType->isStructTy() || Ptr_StoreType->isArrayTy() || Ptr_StoreType->isVectorTy()) {
+                  errs() << "\t" << *Store << "\t"  << *Store->getType() << "\t\t" << "\n";
+                  getTypeData(StoreType);
+                }
+            }
+          }
+
+            //int InputLoad = Load->getType()->getPrimitiveSizeInBits();
+          NumberOfInstructions++;
+        } // End of BB For
+      } // End of Function For
+      errs() << "   ----------------------------------------------" << '\n';
+      errs() << " Number of Instructions : " << NumberOfInstructions << "\n";
+      errs() << "   ----------------------------------------------" << '\n';
+    }
+          
+
+    // END 
+    // IMPORT FROM ACCELSEEKER FUNCTIONS
+
+
 
     virtual void getAnalysisUsage(AnalysisUsage& AU) const override {
               

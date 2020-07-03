@@ -13,11 +13,11 @@
 # Start editing the Makefile
 
 # Paths to LLVM8 (Edit the Path)
-#BIN_DIR_LLVM=~giorgio/llvm_new/build/bin
-#LIB_DIR_LLVM=~giorgio/llvm_new/build/lib
+BIN_DIR_LLVM=~giorgio/llvm_new/build/bin
+LIB_DIR_LLVM=~giorgio/llvm_new/build/lib
 
-BIN_DIR_LLVM=~/FunctionSignature/llvm-3.8.0/build/bin
-LIB_DIR_LLVM=~/FunctionSignature/llvm-3.8.0/build/lib
+#BIN_DIR_LLVM=~//llvm-3.8.0/build/bin
+#LIB_DIR_LLVM=~/llvm-3.8.0/build/lib
 # BENCH Name
 BENCH=backprop
 
